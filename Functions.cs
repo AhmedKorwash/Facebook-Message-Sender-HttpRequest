@@ -35,6 +35,7 @@ namespace FacebookMessageSender
             get { return cookies; }
             set { cookies = value; }
         }
+        // Useragent of blackberry you can use any other useragent as you like.
         private string useragent = "Mozilla/5.0 (BlackBerry; U; BlackBerry 9900; en) AppleWebKit/534.11+ (KHTML, like Gecko) Version/7.1.0.346 Mobile Safari/534.11+";//"Mozilla/5.0 (Windows NT x.y; Win64; x64; rv:10.0) Gecko/20100101 Firefox/10.0";
         public AuthFaceBook(string username, string password)
         {
@@ -85,7 +86,8 @@ namespace FacebookMessageSender
                 string getUrl = "https://www.facebook.com/login.php?login_attempt=1";
                 HttpWebRequest getRequest = (HttpWebRequest)WebRequest.Create(getUrl);
                 getRequest.CookieContainer = new CookieContainer();
-                getRequest.CookieContainer.Add(cookies); //recover cookies First request
+                // Send Cookies from the first step
+                getRequest.CookieContainer.Add(cookies); 
                 getRequest.Method = WebRequestMethods.Http.Post;
                 getRequest.UserAgent = useragent;
                 getRequest.AllowWriteStreamBuffering = true;
@@ -95,7 +97,7 @@ namespace FacebookMessageSender
                 getRequest.Referer = "https://www.facebook.com";
                 getRequest.KeepAlive = false;
                 getRequest.Timeout = 45000;
-
+                //postData is the Parameter needed to complete Login Request
                 byte[] byteArray = Encoding.ASCII.GetBytes(postData);
                 getRequest.ContentLength = byteArray.Length;
                 Stream newStream = getRequest.GetRequestStream(); //open connection
@@ -104,6 +106,7 @@ namespace FacebookMessageSender
 
                 HttpWebResponse getResponse = (HttpWebResponse)getRequest.GetResponse();
                 cookies.Add(getResponse.Cookies);
+                //In General facebook back 6:8 cookies when you login this is best solution to determin done or not.
                 if (getResponse.Cookies.Count > 6)
                     islogin = true;
                 else
@@ -190,6 +193,8 @@ namespace FacebookMessageSender
             set { userId = value; }
         }
         private string linkReq = "";
+        
+        //This method is so important to fill the distnation and hidden parms and i think its dynamic to adapt any changes maybe happend from facebook
         public OptionMessage(string uid, AuthFaceBook client)
         {
             try
