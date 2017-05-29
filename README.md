@@ -2,10 +2,10 @@
 It's so easy now to send facebook message with no any needs for Permission or API.
 
 # How I Can use this Library?
-1 - create Login Auth.
-2 - Make Option with.
-3 - Send Message with your Option.
+1 - create Login Auth. </br>
+2 - Make Option with. </br>
+3 - Send Message with your Option. </br>
 
 # Tips
-you dont need make many options to send many message for the same target user.
+you dont need make many options to send many message for the same target user. </br>
 make one option per target user.
