@@ -3,7 +3,7 @@ It's so easy now to send facebook message with no any needs for Permission or AP
 
 # How I Can use this Library?
 1 - create Login Auth. </br>
-2 - Make Option with. </br>
+2 - Make Option with MessageOption. </br>
 3 - Send Message with your Option. </br>
 
 # Tips
