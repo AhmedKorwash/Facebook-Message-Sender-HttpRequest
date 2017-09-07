@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -29,17 +30,90 @@ namespace FacebookMessageSender
             get { return pass; }
             set { pass = value; }
         }
-        private CookieCollection cookies;
-        public CookieCollection Cookies
+        private CookieContainer cookies;
+        public CookieContainer Cookies
         {
             get { return cookies; }
             set { cookies = value; }
         }
-        // Useragent of blackberry you can use any other useragent as you like.
         private string useragent = "Mozilla/5.0 (BlackBerry; U; BlackBerry 9900; en) AppleWebKit/534.11+ (KHTML, like Gecko) Version/7.1.0.346 Mobile Safari/534.11+";//"Mozilla/5.0 (Windows NT x.y; Win64; x64; rv:10.0) Gecko/20100101 Firefox/10.0";
         public AuthFaceBook(string username, string password)
         {
-            AuthFaceBookNow(username, password);
+            if (!File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "usersFile.dat")))
+            {
+                File.Create(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "usersFile.dat"));
+            }
+            string[] usersFile = File.ReadAllLines(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "usersFile.dat"));
+            if (usersFile.Any(s=>s.Contains(username)))
+            {
+                string cookefile = usersFile.ToList().Where(s => s.Contains(username)).First().Split('|')[1];
+                if (File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile)))
+                {
+                    var Cookie = ReadCookiesFromDisk(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile));
+                    if (Cookie != null)
+                    {
+                        this.username = username;
+                        this.pass = password;
+                        this.cookies = Cookie;
+                        this.islogin = true;
+                    }
+                    else
+                    {
+                        IsLogin = false;
+                        File.Delete(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile));
+                    }
+                }
+                else
+                {
+                    AuthFaceBookNow(username, password);
+                    if (IsLogin)
+                    {
+                        FileStream fs = new FileStream(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                        "usersFile.dat"), FileMode.OpenOrCreate, FileAccess.Write);
+                        fs.Seek(0, SeekOrigin.End);
+                        StreamWriter sw = new StreamWriter(fs);
+                        bool res = WriteCookiesToDisk(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile), this.Cookies);
+                        if (res)
+                        {
+                            sw.WriteLine(username + "|" + Guid.NewGuid().ToString() + ".dat");
+                            sw.Flush();
+                            sw.Close();
+                            fs.Close();
+                        }
+                        else
+                        {
+                            IsLogin = false;
+                            File.Delete(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile));
+                        }
+                    }
+                }
+                
+            }
+            else
+            {
+                AuthFaceBookNow(username, password);
+                if (IsLogin)
+                {
+                    FileStream fs = new FileStream(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                    "usersFile.dat"), FileMode.OpenOrCreate, FileAccess.Write);
+                    fs.Seek(0, SeekOrigin.End);
+                    StreamWriter sw = new StreamWriter(fs);
+                    string cookefile = Guid.NewGuid().ToString() + ".dat";
+                    bool res = WriteCookiesToDisk(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile), this.Cookies);
+                    if (res)
+                    {
+                        sw.WriteLine(username + "|" + Guid.NewGuid().ToString() + ".dat");
+                        sw.Flush();
+                        sw.Close();
+                        fs.Close();
+                    }
+                    else
+                    {
+                        IsLogin = false;
+                        File.Delete(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), cookefile));
+                    }
+                }
+            }
         }
 
         public AuthFaceBook()
@@ -50,12 +124,12 @@ namespace FacebookMessageSender
         {
             UserName = username;
             Password = password;
-            cookies = new CookieCollection();
+            cookies = new CookieContainer();
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://www.facebook.com/");
                 request.CookieContainer = new CookieContainer();
-                request.CookieContainer.Add(cookies);
+                request.CookieContainer = cookies;
                 request.UserAgent = useragent;
                 request.KeepAlive = false;
                 request.Timeout = 45000;
@@ -86,8 +160,7 @@ namespace FacebookMessageSender
                 string getUrl = "https://www.facebook.com/login.php?login_attempt=1";
                 HttpWebRequest getRequest = (HttpWebRequest)WebRequest.Create(getUrl);
                 getRequest.CookieContainer = new CookieContainer();
-                // Send Cookies from the first step
-                getRequest.CookieContainer.Add(cookies); 
+                getRequest.CookieContainer = cookies; //recover cookies First request
                 getRequest.Method = WebRequestMethods.Http.Post;
                 getRequest.UserAgent = useragent;
                 getRequest.AllowWriteStreamBuffering = true;
@@ -97,7 +170,7 @@ namespace FacebookMessageSender
                 getRequest.Referer = "https://www.facebook.com";
                 getRequest.KeepAlive = false;
                 getRequest.Timeout = 45000;
-                //postData is the Parameter needed to complete Login Request
+
                 byte[] byteArray = Encoding.ASCII.GetBytes(postData);
                 getRequest.ContentLength = byteArray.Length;
                 Stream newStream = getRequest.GetRequestStream(); //open connection
@@ -106,7 +179,6 @@ namespace FacebookMessageSender
 
                 HttpWebResponse getResponse = (HttpWebResponse)getRequest.GetResponse();
                 cookies.Add(getResponse.Cookies);
-                //In General facebook back 6:8 cookies when you login this is best solution to determin done or not.
                 if (getResponse.Cookies.Count > 6)
                     islogin = true;
                 else
@@ -127,8 +199,38 @@ namespace FacebookMessageSender
             set { useragent = value; }
         }
 
+        public CookieContainer ReadCookiesFromDisk(string file)
+        {
 
-
+            try
+            {
+                using (Stream stream = File.Open(file, FileMode.Open))
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    return (CookieContainer)formatter.Deserialize(stream);
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+        public bool WriteCookiesToDisk(string file, CookieContainer cookieJar)
+        {
+            using (Stream stream = File.Create(file))
+            {
+                try
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    formatter.Serialize(stream, cookieJar);
+                    return true;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
 
     }
     public class FacebookHttpRequest
@@ -146,7 +248,7 @@ namespace FacebookMessageSender
                 string Data = string.Format("fb_dtsg={0}&body={1}&send=Send&wwwupp=V3&ids%5B{2}%5D={3}&referrer=&ctype=&cver=legacy", option.DTSG, Uri.EscapeDataString(TextMessage), option.UserId, option.UserId);
                 HttpWebRequest getRequest = (HttpWebRequest)WebRequest.Create("https://m.facebook.com/messages/send/?icm=1");
                 getRequest.CookieContainer = new CookieContainer();
-                getRequest.CookieContainer.Add(client.Cookies); //recover cookies First request
+                getRequest.CookieContainer = client.Cookies; //recover cookies First request
                 getRequest.Method = WebRequestMethods.Http.Post;
                 getRequest.UserAgent = client.UserAgent;
                 getRequest.AllowWriteStreamBuffering = true;
@@ -193,8 +295,6 @@ namespace FacebookMessageSender
             set { userId = value; }
         }
         private string linkReq = "";
-        
-        //This method is so important to fill the distnation and hidden parms and i think its dynamic to adapt any changes maybe happend from facebook
         public OptionMessage(string uid, AuthFaceBook client)
         {
             try
@@ -203,7 +303,7 @@ namespace FacebookMessageSender
                 linkReq = "https://m.facebook.com/messages/thread/" + userId;
                 HttpWebRequest Arequest = (HttpWebRequest)WebRequest.Create(linkReq);
                 Arequest.CookieContainer = new CookieContainer();
-                Arequest.CookieContainer.Add(client.Cookies);
+                Arequest.CookieContainer = client.Cookies;
                 Arequest.UserAgent = client.UserAgent;
                 Arequest.KeepAlive = false;
                 Arequest.Timeout = 45000;
