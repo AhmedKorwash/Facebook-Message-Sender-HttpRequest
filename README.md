@@ -11,4 +11,4 @@ you dont need make many options to send many message for the same target user. <
 make one option per target user.
 
 
-Now its availble on **Xamarin
+Now its availble on Xamarin
