@@ -9,3 +9,6 @@ It's so easy now to send facebook message with no any needs for Permission or AP
 # Tips
 you dont need make many options to send many message for the same target user. </br>
 make one option per target user.
+
+
+Now its availble on # Xamarin
