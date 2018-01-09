@@ -39,7 +39,6 @@ namespace IMessangerBot
         private string useragent = "Mozilla/5.0 (BlackBerry; U; BlackBerry 9900; en) AppleWebKit/534.11+ (KHTML, like Gecko) Version/7.1.0.346 Mobile Safari/534.11+";//"Mozilla/5.0 (Windows NT x.y; Win64; x64; rv:10.0) Gecko/20100101 Firefox/10.0";
         public AuthFaceBook(string username, string password)
         {
-            string xx = Path.GetFullPath(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments));
             if (!File.Exists(Path.Combine(Path.GetFullPath(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)), "usersFile.dat")))
             {
                 File.Create(Path.Combine(Path.GetFullPath(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)), "usersFile.dat"));
